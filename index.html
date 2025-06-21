@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Cesium WebGIS Avançado</title>
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        #logo {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 300px;
+            z-index: 20;
+        }
+        #legenda {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: sans-serif;
+            font-size: 13px;
+            z-index: 15;
+        }
+        .legenda-cor {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        #bemvindo {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            color: black;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: sans-serif;
+            text-align: center;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body>
+    <div id="cesiumContainer"></div>
+    <div id="bemvindo">
+        Bem vindo ao Help City CPTD: Uma plataforma para Análise territórial, Integração de Dados e Inteligência Artificial para a Gestão da Segurança Pública.
+    </div>
+    <div id="menu">
+        <h3>Camadas</h3>
+        <label><input type="checkbox" checked onchange="toggleLayer('Limites')"> Limites Taguatinga</label><br>
+        <label><input type="checkbox" checked onchange="toggleLayer('Metro')"> Metrô DF</label><br>
+        <label><input type="checkbox" checked onchange="toggleLayer('Estacoes')"> Estações</label><br>
+        <label><input type="checkbox" checked onchange="toggleLayer('Estacionamentos')"> Estacionamentos</label><br>
+        <label><input type="checkbox" checked onchange="toggleLayer('Parques')"> Parques</label><br>
+        <label><input type="checkbox" checked onchange="toggleLayer('Furtos')"> Furtos em veículos</label><br>
+        <label><input type="checkbox" checked onchange="toggleLayer('Acidentes')"> Acidentes de trânsito</label><br>
+        <label><input type="checkbox" checked onchange="toggleLayer('Desordens')"> Pontos de Desordem Urbana</label>
+    </div>
+    <img src="logo.svg" id="logo" alt="Logo">
+
+    <div id="legenda">
+        <h3>Legenda</h3>
+        <div><span class="legenda-cor" style="background-color: cyan;"></span> Limites Taguatinga</div>
+        <div><span class="legenda-cor" style="background-color: red;"></span> Linha do Metrô</div>
+        <div><span class="legenda-cor" style="background-color: blue;"></span> Estações</div>
+        <div><span class="legenda-cor" style="background-color: orange;"></span> Estacionamentos</div>
+        <div><span class="legenda-cor" style="background-color: green;"></span> Parques</div>
+        <div><span class="legenda-cor" style="background-color: rgba(234, 10, 10, 0.91);"></span> Zonas com altos índices de Furtos em veículos| PCDF</div>
+        <div><span class="legenda-cor" style="background-color: yellow;"></span> Zonas com muitos acidentes | DETRAN DF</div>
+        <div><span class="legenda-cor" style="background-color: #001e80;"></span> Pontos de Desordem Urbana</div>
+    </div>
+
+    <script type="module">
+        Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzMDljYzVkNy0xODcwLTRmNWQtYmFmMi05NmNkNGJmNWRmNTgiLCJpZCI6MzE0MTA1LCJpYXQiOjE3NTA0MzA0ODR9.iyYZSsAH5KZGB-MSevTr_9VFLKzheW8lOcl0j783po4';
+        const viewer = new Cesium.Viewer('cesiumContainer', {
+            terrain: Cesium.Terrain.fromWorldTerrain(),
+            timeline: false,
+            animation: false,
+            sceneModePicker: true
+        });
+
+        viewer.scene.globe.enableLighting = true;
+        const layers = {};
+
+        async function loadTileset() {
+            const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(2275207);
+            viewer.scene.primitives.add(tileset);
+        }
+
+        async function loadGeoJSON(url, key, options = {}, flyTo = false) {
+            console.log("Carregando camada:", url);
+            const {
+                color = Cesium.Color.CYAN.withAlpha(0.4),
+                outlineColor = Cesium.Color.BLACK,
+                pointSize = 10
+            } = options;
+
+            const clamp = key !== 'Desordens';
+            const dataSource = await Cesium.GeoJsonDataSource.load(url, { clampToGround: clamp });
+
+            layers[key] = dataSource;
+            viewer.dataSources.add(dataSource);
+            if (flyTo) viewer.flyTo(dataSource);
+
+            dataSource.entities.values.forEach(entity => {
+                if (entity.polygon) {
+                    entity.polygon.material = color;
+                    entity.polygon.outline = true;
+                    entity.polygon.outlineColor = outlineColor;
+                }
+                if (entity.polyline) {
+                    entity.polyline.material = new Cesium.PolylineOutlineMaterialProperty({
+                        color: color,
+                        outlineColor: Cesium.Color.BLACK,
+                        outlineWidth: 1
+                    });
+                    entity.polyline.width = 3;
+                }
+                if (entity.point) {
+                    entity.point.pixelSize = pointSize;
+                    entity.point.color = color;
+                    entity.point.heightReference = key === 'Desordens' ? Cesium.HeightReference.RELATIVE_TO_GROUND : Cesium.HeightReference.CLAMP_TO_GROUND;
+                }
+
+                if (entity.properties) {
+                    const props = entity.properties;
+                    let content = "<strong>Informações:</strong><br>";
+                    props.propertyNames.forEach(name => {
+                        content += `<b>${name}:</b> ${props[name].getValue()}<br>`;
+                    });
+                    entity.description = content;
+                }
+            });
+        }
+
+        function toggleLayer(key) {
+            const layer = layers[key];
+            if (layer) {
+                layer.show = !layer.show;
+            }
+        }
+
+        setTimeout(() => {
+            const msg = document.getElementById('bemvindo');
+            if (msg) msg.remove();
+        }, 120000);
+
+        loadTileset();
+        loadGeoJSON('./data/Limites_Taguatinga_v2.geojson', 'Limites', { color: Cesium.Color.CYAN.withAlpha(0.1) }, true);
+        loadGeoJSON('./data/Metro_DF.geojson', 'Metro', { color: Cesium.Color.RED });
+        loadGeoJSON('./data/Estacao_metro.geojson', 'Estacoes', { color: Cesium.Color.BLUE, pointSize: 12 });
+        loadGeoJSON('./data/Estacionamentos.geojson', 'Estacionamentos', { color: Cesium.Color.ORANGE });
+        loadGeoJSON('./data/Parques.geojson', 'Parques', { color: Cesium.Color.GREEN.withAlpha(0.5) });
+        loadGeoJSON('./data/Locais_com_altos_indices_Furto_em_veiculos.geojson', 'Furtos', { color: Cesium.Color.RED.withAlpha(0.5) });
+        loadGeoJSON('./data/Zonas_Muitos_acidentes.geojson', 'Acidentes', { color: Cesium.Color.YELLOW.withAlpha(0.5) });
+        loadGeoJSON('./data/Pontos_de_Desordens.geojson', 'Desordens', { color: Cesium.Color.MAROON, pointSize: 14 });
+    </script>
+</body>
+</html>
