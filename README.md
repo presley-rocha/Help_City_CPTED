@@ -1,6 +1,6 @@
-# 🌐 Help City CPTD - Plataforma WebGIS
+# 🌐 Help City CPTED - Plataforma WebGIS
 
-Este repositório contém o sistema **Help City CPTD**, uma plataforma desenvolvida em **HTML, CSS e JavaScript**, com foco em análise territorial e integração de dados para a gestão da segurança pública.
+Este repositório contém o sistema **Help City CPTED**, uma plataforma desenvolvida em **HTML, CSS e JavaScript**, com foco em análise territorial e integração de dados para a gestão da segurança pública.
 
 ## 🚀 Como Executar o Projeto
 
